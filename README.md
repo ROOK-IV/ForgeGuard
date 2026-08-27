@@ -143,7 +143,6 @@ the number and configuration of the containers inspected.
 
 ```text
 ForgeGuard/
-|-- docs/
 |-- src/
 |   `-- forgeguard/
 |       |-- __init__.py
