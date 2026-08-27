@@ -2,18 +2,20 @@ from forgeguard.checks import (
     check_added_capabilities,
     check_docker_socket,
     check_host_network,
+    check_image_pinning,
     check_no_new_privileges,
     check_port_bindings,
     check_privileged,
 )
+
 from forgeguard.models import ContainerSnapshot, Mount, PortBinding, Status
 
 
-def make_container(*, privileged: bool) -> ContainerSnapshot:
+def make_container(*, privileged: bool, image: str = "example/web:1.0") -> ContainerSnapshot:
     return ContainerSnapshot(
         container_id="abc123",
         name="example-web",
-        image="example/web:1.0",
+        image=image,
         privileged=privileged,
     )
 
@@ -173,3 +175,30 @@ def test_no_new_privileges_enabled_passes() -> None:
     )
 
     assert check_no_new_privileges(container).status is Status.PASS
+
+
+def test_digest_pinned_image_passes() -> None:
+    container = ContainerSnapshot(
+        container_id="abc123",
+        name="example-web",
+        image="example/web@sha256:" + ("a" * 64),
+    )
+
+    finding = check_image_pinning(container)
+
+    assert finding.status is Status.PASS
+    assert finding.evidence["image"] == container.image
+
+
+def test_mutable_image_tag_warns() -> None:
+    container = ContainerSnapshot(
+        container_id="abc123",
+        name="example-web",
+        image="example/web:latest",
+    )
+
+    finding = check_image_pinning(container)
+
+    assert finding.status is Status.WARN
+    assert finding.remediation is not None
+    assert finding.evidence["image"] == "example/web:latest"

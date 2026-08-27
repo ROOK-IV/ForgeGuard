@@ -190,9 +190,32 @@ def check_no_new_privileges(container: ContainerSnapshot) -> Finding:
     )
 
 
+def check_image_pinning(container: ContainerSnapshot) -> Finding:
+    if "@sha256:" in container.image:
+        return Finding(
+            check_id="image.digest-pinned",
+            status=Status.PASS,
+            title="Image digest pinning",
+            message="The container image is pinned to a SHA-256 digest.",
+            container=container.name,
+            evidence={"image": container.image},
+        )
+
+    return Finding(
+        check_id="image.digest-pinned",
+        status=Status.WARN,
+        title="Image digest pinning",
+        message="The container image is not pinned to a SHA-256 digest.",
+        container=container.name,
+        remediation="Replace the mutable image tag with an approved SHA-256 digest.",
+        evidence={"image": container.image},
+    )
+
+
 def audit_container(container: ContainerSnapshot) -> list[Finding]:
     return [
         check_privileged(container),
+        check_image_pinning(container),
         check_port_bindings(container),
         check_host_network(container),
         check_docker_socket(container),
