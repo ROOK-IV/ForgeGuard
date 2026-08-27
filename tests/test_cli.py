@@ -42,3 +42,20 @@ def test_main_uses_text_format_by_default(monkeypatch, capsys) -> None:
     assert "FORGEGUARD AUDIT" in captured.out
     assert "Running containers" in captured.out
     assert "Result: 0 passed, 1 warned, 0 failed" in captured.out
+
+
+def test_main_can_fail_on_warning(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        "forgeguard.cli.inspect_running_containers",
+        lambda: [],
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["forgeguard", "--fail-on", "warn"],
+    )
+
+    exit_code = main()
+    capsys.readouterr()
+
+    assert exit_code == 1

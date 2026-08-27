@@ -21,6 +21,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Select the report format. Default: text.",
     )
 
+    parser.add_argument(
+        "--fail-on",
+        choices=("fail", "warn"),
+        default="fail",
+        help="set the lowest severity level that produces exit code 1. Default: fail.",
+    )
+
     return parser
 
 
@@ -51,7 +58,14 @@ def main() -> int:
         print(render_text(findings))
 
     summary = summarize(findings)
-    return 1 if summary.failed else 0
+
+    if summary.failed:
+        return 1
+
+    if args.fail_on == "warn" and summary.warned:
+        return 1
+
+    return 0
 
 
 if __name__ == "__main__":
