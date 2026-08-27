@@ -5,19 +5,28 @@ import argparse
 from forgeguard.checks import audit_containers
 from forgeguard.docker_client import DockerClientError, inspect_running_containers
 from forgeguard.models import Finding, Status, summarize
-from forgeguard.reporters import render_text
+from forgeguard.reporters import render_json, render_text
 
 
 def build_parser() -> argparse.ArgumentParser:
-    return argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         prog="forgeguard",
         description="Audit the security posture of running Docker containers.",
     )
 
+    parser.add_argument(
+        "--format",
+        choices=("text", "json"),
+        default="text",
+        help="Select the report format. Default: text.",
+    )
+
+    return parser
+
 
 def main() -> int:
     parser = build_parser()
-    parser.parse_args()
+    args = parser.parse_args()
 
     try:
         containers = inspect_running_containers()
@@ -36,7 +45,10 @@ def main() -> int:
             )
         ]
 
-    print(render_text(findings))
+    if args.format == "json":
+        print(render_json(findings))
+    else:
+        print(render_text(findings))
 
     summary = summarize(findings)
     return 1 if summary.failed else 0
