@@ -54,6 +54,7 @@ def parse_container(raw: dict[str, Any]) -> ContainerSnapshot:
         mounts=mounts,
         added_capabilities=tuple(host_config.get("CapAdd") or ()),
         security_options=tuple(host_config.get("SecurityOpt") or ()),
+        read_only_rootfs=bool(host_config.get("ReadonlyRootfs", False))
     )
 
 

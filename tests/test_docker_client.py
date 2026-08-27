@@ -15,6 +15,7 @@ def test_parse_container_normalizes_docker_inspect_data() -> None:
             "RestartPolicy": {"Name": "no"},
             "CapAdd": ["NET_ADMIN"],
             "SecurityOpt": ["no-new-privileges:true"],
+            "ReadonlyRootfs": True,
         },
         "NetworkSettings": {
             "Ports": {
@@ -51,3 +52,4 @@ def test_parse_container_normalizes_docker_inspect_data() -> None:
     assert container.added_capabilities == ("NET_ADMIN",)
     assert container.security_options == ("no-new-privileges:true",)
     assert container.image == "ghcr.io/digininja/dvwa@sha256:example"
+    assert container.read_only_rootfs is True

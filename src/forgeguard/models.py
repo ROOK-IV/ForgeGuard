@@ -43,6 +43,7 @@ class ContainerSnapshot:
     image: str
     user: str = ""
     privileged: bool = False
+    read_only_rootfs: bool = False
     network_mode: str = "default"
     restart_policy: str = "no"
     port_bindings: tuple[PortBinding, ...] = ()

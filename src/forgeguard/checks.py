@@ -290,6 +290,29 @@ def check_root_user(container: ContainerSnapshot) -> Finding:
     )
 
 
+def check_read_only_rootfs(container: ContainerSnapshot) -> Finding:
+    if container.read_only_rootfs:
+        return Finding(
+            check_id="filesystem.read-only-root",
+            status=Status.PASS,
+            title="Read-only root filesystem",
+            message="The container root filesystem is read-only.",
+            container=container.name,
+        )
+
+    return Finding(
+        check_id="filesystem.read-only-root",
+        status=Status.WARN,
+        title="Read-only root filesystem",
+        message="The container root filesystem is writable.",
+        container=container.name,
+        remediation=(
+            "Enable a read-only root filesystem and provide writable volumes "
+            "only where the application requires them."
+        ),
+    )
+
+
 def audit_container(container: ContainerSnapshot) -> list[Finding]:
     return [
         check_privileged(container),
@@ -300,7 +323,8 @@ def audit_container(container: ContainerSnapshot) -> list[Finding]:
         check_docker_socket(container),
         check_added_capabilities(container),
         check_no_new_privileges(container),
-        check_root_user(container)
+        check_root_user(container),
+        check_read_only_rootfs(container)
     ]
 
 

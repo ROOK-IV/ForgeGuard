@@ -8,6 +8,7 @@ from forgeguard.checks import (
     check_privileged,
     check_sensitive_host_mounts,
     check_root_user,
+    check_read_only_rootfs,
 )
 
 
@@ -308,3 +309,31 @@ def test_named_non_root_user_passes() -> None:
 
     assert finding.status is Status.PASS
     assert finding.evidence["user"] == "appuser:appgroup"
+
+
+def test_read_only_root_filesystem_passes() -> None:
+    container = ContainerSnapshot(
+        container_id="abc123",
+        name="example-web",
+        image="example/web:latest",
+        read_only_rootfs=True,
+    )
+
+    finding = check_read_only_rootfs(container)
+
+    assert finding.status is Status.PASS
+    assert finding.remediation is None
+
+
+def test_writable_root_filesystem_warns() -> None:
+    container = ContainerSnapshot(
+        container_id="abc123",
+        name="example-web",
+        image="example/web:latest",
+        read_only_rootfs=False,
+    )
+
+    finding = check_read_only_rootfs(container)
+
+    assert finding.status is Status.WARN
+    assert finding.remediation is not None
