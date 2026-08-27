@@ -1,4 +1,12 @@
+from ipaddress import ip_address
+
 from forgeguard.models import ContainerSnapshot, Finding, Status
+
+
+DOCKER_SOCKET_PATHS = {
+    "/var/run/docker.sock",
+    "/run/docker.sock",
+}
 
 
 def check_privileged(container: ContainerSnapshot) -> Finding:
@@ -21,8 +29,6 @@ def check_privileged(container: ContainerSnapshot) -> Finding:
         container=container.name,
         evidence={"privileged": False},
     )
-
-from ipaddress import ip_address
 
 
 def check_port_bindings(container: ContainerSnapshot) -> Finding:
@@ -91,11 +97,107 @@ def check_host_network(container: ContainerSnapshot) -> Finding:
     )
 
 
+def check_docker_socket(container: ContainerSnapshot) -> Finding:
+    socket_mounts = [
+        {
+            "source": mount.source,
+            "destination": mount.destination,
+            "read_only": mount.read_only,
+        }
+        for mount in container.mounts
+        if (
+            mount.source in DOCKER_SOCKET_PATHS
+            or mount.destination in DOCKER_SOCKET_PATHS
+        )
+    ]
+
+    if socket_mounts:
+        return Finding(
+            check_id="mounts.docker-socket",
+            status=Status.FAIL,
+            title="Docker socket mount",
+            message="Container has access to the Docker control socket.",
+            container=container.name,
+            remediation="Remove the Docker socket mount.",
+            evidence={"socket_mounts": socket_mounts},
+        )
+
+    return Finding(
+        check_id="mounts.docker-socket",
+        status=Status.PASS,
+        title="Docker socket mount",
+        message="Container does not mount the Docker control socket.",
+        container=container.name,
+        evidence={"socket_mounts": []},
+    )
+
+
+def check_added_capabilities(container: ContainerSnapshot) -> Finding:
+    if container.added_capabilities:
+        return Finding(
+            check_id="container.capabilities",
+            status=Status.WARN,
+            title="Added Linux capabilities",
+            message="Container has additional Linux capabilities.",
+            container=container.name,
+            remediation="Remove capabilities that are not strictly required.",
+            evidence={
+                "added_capabilities": list(container.added_capabilities),
+            },
+        )
+
+    return Finding(
+        check_id="container.capabilities",
+        status=Status.PASS,
+        title="Added Linux capabilities",
+        message="Container does not add Linux capabilities.",
+        container=container.name,
+        evidence={"added_capabilities": []},
+    )
+
+
+def check_no_new_privileges(container: ContainerSnapshot) -> Finding:
+    enabled = any(
+        option.startswith("no-new-privileges")
+        for option in container.security_options
+    )
+
+    if not enabled:
+        return Finding(
+            check_id="container.no-new-privileges",
+            status=Status.WARN,
+            title="No-new-privileges",
+            message="Container does not enable no-new-privileges.",
+            container=container.name,
+            remediation=(
+                "Set security_opt to no-new-privileges:true "
+                "when the workload supports it."
+            ),
+            evidence={
+                "security_options": list(container.security_options),
+            },
+        )
+
+    return Finding(
+        check_id="container.no-new-privileges",
+        status=Status.PASS,
+        title="No-new-privileges",
+        message="Container enables no-new-privileges.",
+        container=container.name,
+        evidence={
+            "security_options": list(container.security_options),
+        },
+    )
+
+
 def audit_container(container: ContainerSnapshot) -> list[Finding]:
     return [
         check_privileged(container),
         check_port_bindings(container),
         check_host_network(container),
+        check_docker_socket(container),
+        check_added_capabilities(container),
+        check_no_new_privileges(container),
     ]
 
 

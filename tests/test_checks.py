@@ -1,9 +1,12 @@
 from forgeguard.checks import (
+    check_added_capabilities,
+    check_docker_socket,
     check_host_network,
+    check_no_new_privileges,
     check_port_bindings,
     check_privileged,
 )
-from forgeguard.models import ContainerSnapshot, PortBinding, Status
+from forgeguard.models import ContainerSnapshot, Mount, PortBinding, Status
 
 
 def make_container(*, privileged: bool) -> ContainerSnapshot:
@@ -85,9 +88,7 @@ def test_host_network_mode_fails() -> None:
         network_mode="host",
     )
 
-    finding = check_host_network(container)
-
-    assert finding.status is Status.FAIL
+    assert check_host_network(container).status is Status.FAIL
 
 
 def test_bridge_network_mode_passes() -> None:
@@ -98,6 +99,77 @@ def test_bridge_network_mode_passes() -> None:
         network_mode="forgeguard-lab",
     )
 
-    finding = check_host_network(container)
+    assert check_host_network(container).status is Status.PASS
 
-    assert finding.status is Status.PASS
+
+def test_docker_socket_mount_fails() -> None:
+    container = ContainerSnapshot(
+        container_id="abc123",
+        name="socket-reader",
+        image="example/socket-reader:1.0",
+        mounts=(
+            Mount(
+                mount_type="bind",
+                source="/var/run/docker.sock",
+                destination="/var/run/docker.sock",
+                read_only=True,
+            ),
+        ),
+    )
+
+    assert check_docker_socket(container).status is Status.FAIL
+
+
+def test_container_without_docker_socket_passes() -> None:
+    container = ContainerSnapshot(
+        container_id="abc123",
+        name="example-web",
+        image="example/web:1.0",
+    )
+
+    assert check_docker_socket(container).status is Status.PASS
+
+
+def test_added_capabilities_warn() -> None:
+    container = ContainerSnapshot(
+        container_id="abc123",
+        name="example-web",
+        image="example/web:1.0",
+        added_capabilities=("NET_ADMIN",),
+    )
+
+    finding = check_added_capabilities(container)
+
+    assert finding.status is Status.WARN
+    assert finding.evidence["added_capabilities"] == ["NET_ADMIN"]
+
+
+def test_no_added_capabilities_passes() -> None:
+    container = ContainerSnapshot(
+        container_id="abc123",
+        name="example-web",
+        image="example/web:1.0",
+    )
+
+    assert check_added_capabilities(container).status is Status.PASS
+
+
+def test_missing_no_new_privileges_warns() -> None:
+    container = ContainerSnapshot(
+        container_id="abc123",
+        name="example-web",
+        image="example/web:1.0",
+    )
+
+    assert check_no_new_privileges(container).status is Status.WARN
+
+
+def test_no_new_privileges_enabled_passes() -> None:
+    container = ContainerSnapshot(
+        container_id="abc123",
+        name="example-web",
+        image="example/web:1.0",
+        security_options=("no-new-privileges:true",),
+    )
+
+    assert check_no_new_privileges(container).status is Status.PASS
