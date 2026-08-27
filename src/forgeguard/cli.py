@@ -28,6 +28,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="set the lowest severity level that produces exit code 1. Default: fail.",
     )
 
+    parser.add_argument(
+        "--container",
+        metavar="NAME",
+        help="Audit only the running container with this exact name.",
+    )
+
     return parser
 
 
@@ -40,7 +46,28 @@ def main() -> int:
     except DockerClientError as exc:
         parser.exit(status=2, message=f"forgeguard: error: {exc}\n")
 
-    if containers:
+    if args.container:
+        containers = [
+            container
+            for container in containers
+            if container.name == args.container
+        ]
+
+        if containers:
+            findings = audit_containers(containers)
+        else:
+            findings = [
+                Finding(
+                    check_id="docker.container-filter",
+                    status=Status.WARN,
+                    title="Container filter",
+                    message=(
+                        f'No running container named "{args.container}" was found.'
+                    ),
+                    container=args.container,
+                )
+            ]
+    elif containers:
         findings = audit_containers(containers)
     else:
         findings = [
