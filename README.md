@@ -10,15 +10,26 @@ results.
 > ForgeGuard audits configuration. It does not modify, stop, restart, or remove
 > containers.
 
-## Current checks
+## Security checks
 
-ForgeGuard v0.1 currently detects:
+ForgeGuard v0.1 audits each running container for:
 
-- Privileged containers
-- Published ports bound beyond loopback
-- Host-network mode
+| Check | Severity when detected |
+| --- | --- |
+| Privileged mode | Fail |
+| Published ports bound beyond loopback | Fail |
+| Host-network mode | Fail |
+| Docker socket mounts | Fail |
+| Sensitive host filesystem mounts | Fail |
+| Added Linux capabilities | Warn |
+| Missing `no-new-privileges` | Warn |
+| Image not pinned to a SHA-256 digest | Warn |
+| Root container user | Warn |
+| Writable root filesystem | Warn |
 
-Additional checks will be added before the first public release.
+A passing result means the inspected configuration did not trigger that specific
+rule. It does not guarantee that the container image or application is free of
+vulnerabilities.
 
 ## Requirements
 
@@ -48,10 +59,34 @@ python -m pytest
 
 ## Usage
 
-Audit all running containers:
+Audit all running containers and print a terminal report:
 
 ```text
 forgeguard
+```
+
+Produce machine-readable JSON:
+
+```text
+forgeguard --format json
+```
+
+Audit one running container by exact name:
+
+```text
+forgeguard --container rangeforge-dvwa
+```
+
+Treat warnings as an unsuccessful audit for CI or automation:
+
+```text
+forgeguard --fail-on warn
+```
+
+Options can be combined:
+
+```text
+forgeguard --container rangeforge-dvwa --format json --fail-on warn
 ```
 
 On Linux systems where Docker requires elevated access:
@@ -75,7 +110,8 @@ docker inspect CONTAINER_ID
 | `1` | One or more security checks failed |
 | `2` | Docker inspection or command usage failed |
 
-Warnings do not currently produce a nonzero exit code.
+Warnings produce exit code `0` by default. When `--fail-on warn` is used,
+warnings produce exit code `1`.
 
 ## Example
 
@@ -86,31 +122,44 @@ FORGEGUARD AUDIT
 [PASS] [rangeforge-dvwa] Privileged container
   Container does not run in privileged mode.
 
-[PASS] [rangeforge-dvwa] Published-port bindings
-  All published ports use loopback addresses.
+[FAIL] [rangeforge-dvwa] Docker socket mount
+  The container mounts the Docker socket.
 
-[PASS] [rangeforge-dvwa] Host network mode
-  Container does not use host network mode.
+  Remediation: Remove the Docker socket mount unless it is strictly required.
 
-Result: 3 passed, 0 warned, 0 failed
+[WARN] [rangeforge-dvwa] Container user
+  The container is configured to run as root.
+
+  Remediation: Configure the image or container to use a dedicated non-root user.
+
+Result: 8 passed, 1 warned, 1 failed
 ```
+
+This abbreviated example demonstrates all three statuses. Actual totals depend on
+the number and configuration of the containers inspected.
 
 ## Project structure
 
 ```text
 ForgeGuard/
-├── docs/
-├── src/
-│   └── forgeguard/
-│       ├── checks.py
-│       ├── cli.py
-│       ├── docker_client.py
-│       ├── models.py
-│       └── reporters.py
-├── tests/
-├── LICENSE
-├── README.md
-└── pyproject.toml
+|-- docs/
+|-- src/
+|   `-- forgeguard/
+|       |-- __init__.py
+|       |-- checks.py
+|       |-- cli.py
+|       |-- docker_client.py
+|       |-- models.py
+|       `-- reporters.py
+|-- tests/
+|   |-- test_checks.py
+|   |-- test_cli.py
+|   |-- test_docker_client.py
+|   |-- test_models.py
+|   `-- test_reporters.py
+|-- LICENSE
+|-- README.md
+`-- pyproject.toml
 ```
 
 ## Scope
