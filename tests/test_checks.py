@@ -6,7 +6,9 @@ from forgeguard.checks import (
     check_no_new_privileges,
     check_port_bindings,
     check_privileged,
+    check_sensitive_host_mounts,
 )
+
 
 from forgeguard.models import ContainerSnapshot, Mount, PortBinding, Status
 
@@ -202,3 +204,64 @@ def test_mutable_image_tag_warns() -> None:
     assert finding.status is Status.WARN
     assert finding.remediation is not None
     assert finding.evidence["image"] == "example/web:latest"
+
+
+def test_sensitive_host_bind_mount_fails() -> None:
+    container = ContainerSnapshot(
+        container_id="abc123",
+        name="example-web",
+        image="example/web:latest",
+        mounts=(
+            Mount(
+                mount_type="bind",
+                source="/etc/example",
+                destination="/host-config",
+                read_only=True,
+            ),
+        ),
+    )
+
+    finding = check_sensitive_host_mounts(container)
+
+    assert finding.status is Status.FAIL
+    assert finding.evidence["sources"] == ["/etc/example"]
+
+
+def test_ordinary_host_bind_mount_passes() -> None:
+    container = ContainerSnapshot(
+        container_id="abc123",
+        name="example-web",
+        image="example/web:latest",
+        mounts=(
+            Mount(
+                mount_type="bind",
+                source="/srv/example-data",
+                destination="/app/data",
+                read_only=False,
+            ),
+        ),
+    )
+
+    finding = check_sensitive_host_mounts(container)
+
+    assert finding.status is Status.PASS
+
+
+def test_docker_socket_is_not_reported_twice() -> None:
+    container = ContainerSnapshot(
+        container_id="abc123",
+        name="example-web",
+        image="example/web:latest",
+        mounts=(
+            Mount(
+                mount_type="bind",
+                source="/var/run/docker.sock",
+                destination="/var/run/docker.sock",
+                read_only=False,
+            ),
+        ),
+    )
+
+    finding = check_sensitive_host_mounts(container)
+
+    assert finding.status is Status.PASS

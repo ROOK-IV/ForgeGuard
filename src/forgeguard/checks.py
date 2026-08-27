@@ -9,6 +9,18 @@ DOCKER_SOCKET_PATHS = {
 }
 
 
+SENSITIVE_HOST_PATHS = (
+    "/etc",
+    "/root",
+    "/proc",
+    "/sys",
+    "/var/run",
+)
+
+def is_path_or_child(path: str, parent: str) -> bool:
+    return path == parent or path.startswith(f"{parent}/")
+
+
 def check_privileged(container: ContainerSnapshot) -> Finding:
     if container.privileged:
         return Finding(
@@ -212,9 +224,46 @@ def check_image_pinning(container: ContainerSnapshot) -> Finding:
     )
 
 
+def check_sensitive_host_mounts(container: ContainerSnapshot) -> Finding:
+    sensitive_sources = []
+
+    for mount in container.mounts:
+        if mount.mount_type != "bind":
+            continue
+
+        if mount.source in DOCKER_SOCKET_PATHS:
+            continue
+
+        if mount.source == "/" or any(
+            is_path_or_child(mount.source, protected_path)
+            for protected_path in SENSITIVE_HOST_PATHS
+        ):
+            sensitive_sources.append(mount.source)
+
+    if sensitive_sources:
+        return Finding(
+            check_id="mount.sensitive-host-path",
+            status=Status.FAIL,
+            title="Sensitive host mounts",
+            message="The container mounts sensitive host filesystem paths.",
+            container=container.name,
+            remediation="Remove unnecessary host bind mounts or use a dedicated volume.",
+            evidence={"sources": sensitive_sources},
+        )
+
+    return Finding(
+        check_id="mount.sensitive-host-path",
+        status=Status.PASS,
+        title="Sensitive host mounts",
+        message="No sensitive host filesystem bind mounts were detected.",
+        container=container.name,
+    )
+
+
 def audit_container(container: ContainerSnapshot) -> list[Finding]:
     return [
         check_privileged(container),
+        check_sensitive_host_mounts(container),
         check_image_pinning(container),
         check_port_bindings(container),
         check_host_network(container),
