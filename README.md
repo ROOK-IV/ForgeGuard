@@ -171,6 +171,11 @@ ForgeGuard is a configuration-auditing tool. It is not:
 - A container runtime protection system
 - A replacement for host hardening or network controls
 
+## Security
+
+See [SECURITY.md](SECURITY.md) for supported versions, reporting scope, and
+private vulnerability-reporting instructions.
+
 ## License
 
 Released under the [MIT License](LICENSE).
