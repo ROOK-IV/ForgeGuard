@@ -260,6 +260,36 @@ def check_sensitive_host_mounts(container: ContainerSnapshot) -> Finding:
     )
 
 
+def check_root_user(container: ContainerSnapshot) -> Finding:
+    configured_user = container.user.strip()
+    primary_user = configured_user.split(":", maxsplit=1)[0].lower()
+
+    runs_as_root = primary_user in {"", "root"}
+
+    if primary_user.isdigit() and int(primary_user) == 0:
+        runs_as_root = True
+
+    if runs_as_root:
+        return Finding(
+            check_id="container.root-user",
+            status=Status.WARN,
+            title="Container user",
+            message="The container is configured to run as root.",
+            container=container.name,
+            remediation="Configure the image or container to use a dedicated non-root user.",
+            evidence={"user": configured_user or "<default>"},
+        )
+
+    return Finding(
+        check_id="container.root-user",
+        status=Status.PASS,
+        title="Container user",
+        message="The container is configured to run as a non-root user.",
+        container=container.name,
+        evidence={"user": configured_user},
+    )
+
+
 def audit_container(container: ContainerSnapshot) -> list[Finding]:
     return [
         check_privileged(container),
@@ -270,6 +300,7 @@ def audit_container(container: ContainerSnapshot) -> list[Finding]:
         check_docker_socket(container),
         check_added_capabilities(container),
         check_no_new_privileges(container),
+        check_root_user(container)
     ]
 
 

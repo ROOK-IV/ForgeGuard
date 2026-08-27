@@ -7,6 +7,7 @@ from forgeguard.checks import (
     check_port_bindings,
     check_privileged,
     check_sensitive_host_mounts,
+    check_root_user,
 )
 
 
@@ -265,3 +266,45 @@ def test_docker_socket_is_not_reported_twice() -> None:
     finding = check_sensitive_host_mounts(container)
 
     assert finding.status is Status.PASS
+
+
+def test_default_container_user_warns() -> None:
+    container = ContainerSnapshot(
+        container_id="abc123",
+        name="example-web",
+        image="example/web:latest",
+        user="",
+    )
+
+    finding = check_root_user(container)
+
+    assert finding.status is Status.WARN
+    assert finding.evidence["user"] == "<default>"
+
+
+def test_numeric_root_user_warns() -> None:
+    container = ContainerSnapshot(
+        container_id="abc123",
+        name="example-web",
+        image="example/web:latest",
+        user="0:1000",
+    )
+
+    finding = check_root_user(container)
+
+    assert finding.status is Status.WARN
+    assert finding.evidence["user"] == "0:1000"
+
+
+def test_named_non_root_user_passes() -> None:
+    container = ContainerSnapshot(
+        container_id="abc123",
+        name="example-web",
+        image="example/web:latest",
+        user="appuser:appgroup",
+    )
+
+    finding = check_root_user(container)
+
+    assert finding.status is Status.PASS
+    assert finding.evidence["user"] == "appuser:appgroup"

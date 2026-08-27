@@ -41,6 +41,7 @@ class ContainerSnapshot:
     container_id: str
     name: str
     image: str
+    user: str = ""
     privileged: bool = False
     network_mode: str = "default"
     restart_policy: str = "no"

@@ -46,6 +46,7 @@ def parse_container(raw: dict[str, Any]) -> ContainerSnapshot:
         container_id=str(raw.get("Id") or ""),
         name=str(raw.get("Name") or "").removeprefix("/"),
         image=str(config.get("Image") or ""),
+        user=str(config.get("User") or ""),
         privileged=bool(host_config.get("Privileged", False)),
         network_mode=str(host_config.get("NetworkMode") or "default"),
         restart_policy=str(restart_policy.get("Name") or "no"),

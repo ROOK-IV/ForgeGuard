@@ -7,6 +7,7 @@ def test_parse_container_normalizes_docker_inspect_data() -> None:
         "Name": "/rangeforge-dvwa",
         "Config": {
             "Image": "ghcr.io/digininja/dvwa@sha256:example",
+            "User": "1000:1000",
         },
         "HostConfig": {
             "Privileged": False,
@@ -40,6 +41,7 @@ def test_parse_container_normalizes_docker_inspect_data() -> None:
 
     assert container.container_id == "abc123"
     assert container.name == "rangeforge-dvwa"
+    assert container.user == "1000:1000"
     assert container.privileged is False
     assert container.network_mode == "rangeforge-lab"
     assert container.restart_policy == "no"
@@ -48,3 +50,4 @@ def test_parse_container_normalizes_docker_inspect_data() -> None:
     assert container.mounts[0].read_only is True
     assert container.added_capabilities == ("NET_ADMIN",)
     assert container.security_options == ("no-new-privileges:true",)
+    assert container.image == "ghcr.io/digininja/dvwa@sha256:example"
