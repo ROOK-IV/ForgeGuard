@@ -15,11 +15,11 @@ Please do not open a public issue for an undisclosed security vulnerability.
 
 Use GitHub's private vulnerability-reporting feature when available:
 
-https://github.com/ROOK-XI/ForgeGuard/security/advisories/new
+https://github.com/ROOK-IV/ForgeGuard/security/advisories/new
 
 If private reporting is unavailable, contact:
 
-`rookxi@proton.me`
+`rookiv@proton.me`
 
 Include, when possible:
 
