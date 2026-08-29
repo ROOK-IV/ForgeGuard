@@ -1,5 +1,5 @@
 # ForgeGuard
-[![Validate](https://github.com/ROOK-XI/ForgeGuard/actions/workflows/validate.yml/badge.svg)](https://github.com/ROOK-XI/ForgeGuard/actions/workflows/validate.yml)
+[![Validate](https://github.com/ROOK-IV/ForgeGuard/actions/workflows/validate.yml/badge.svg)](https://github.com/ROOK-IV/ForgeGuard/actions/workflows/validate.yml)
 
 A read-only Docker security posture auditor.
 
